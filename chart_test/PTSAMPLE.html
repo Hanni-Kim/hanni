@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>HTML 버터플라이 차트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+        }
+
+        .chart-wrap {
+            max-width: 1100px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px #0001;
+            padding: 32px 32px 24px 32px;
+        }
+
+        .legend-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px 24px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .legend-label {
+            font-weight: bold;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-red {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            background: #e57373;
+            display: inline-block;
+        }
+
+        .legend-blue {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            background: #1976d2;
+            display: inline-block;
+        }
+
+        .chart-area {
+            overflow-y: auto;
+            max-height: 520px;
+            min-height: 320px;
+        }
+
+        .butterfly-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+        }
+
+        .butterfly-table th,
+        .butterfly-table td {
+            text-align: center;
+            padding: 8px 6px;
+        }
+
+        .butterfly-table th {
+            background: #f1f3f6;
+            font-weight: 600;
+        }
+
+        .cat-cell {
+            font-weight: bold;
+            background: #f9f9f9;
+            border-radius: 6px 0 0 6px;
+        }
+
+        .subcat-cell {
+            background: #f9f9f9;
+        }
+
+        .diff-cell {
+            font-weight: bold;
+        }
+
+        .diff-pos {
+            color: #388e3c;
+        }
+
+        .diff-neg {
+            color: #d32f2f;
+        }
+
+        .bar-area {
+            position: relative;
+            height: 32px;
+            min-width: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bar-area::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: #bbb;
+            z-index: 0;
+        }
+
+        .bar-neg {
+            position: absolute;
+            right: 50%;
+            height: 16px;
+            background: #e57373;
+            border-radius: 8px 0 0 8px;
+            transform: translateX(-100%);
+        }
+
+        .bar-pos {
+            position: absolute;
+            left: 50%;
+            height: 16px;
+            background: #1976d2;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .line-neg {
+            position: absolute;
+            right: 50%;
+            width: 2px;
+            height: 32px;
+            background: #b71c1c;
+            transform: translateX(-100%);
+        }
+
+        .line-pos {
+            position: absolute;
+            left: 50%;
+            width: 2px;
+            height: 32px;
+            background: #0d47a1;
+        }
+
+        .bar-label {
+            position: absolute;
+            top: 0;
+            font-size: 13px;
+            color: #222;
+            white-space: nowrap;
+        }
+
+        .bar-label.neg {
+            right: 50%;
+            transform: translateX(100%) translateY(-18px);
+        }
+
+        .bar-label.pos {
+            left: 50%;
+            transform: translateY(-18px);
+        }
+
+        .tooltip {
+            display: none;
+            position: absolute;
+            z-index: 10;
+            background: #fff;
+            border: 1.5px solid #1976d2;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #0002;
+            padding: 14px 18px;
+            font-size: 15px;
+            pointer-events: none;
+        }
+
+        .no-review {
+            text-align: center;
+            color: #888;
+            font-size: 18px;
+            padding: 80px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chart-wrap">
+        <!-- 범례 -->
+        <div class="legend-row">
+            <span class="legend-label"><span class="legend-red"></span>카테고리 평균 부정 리뷰 키워드율</span>
+            <span class="legend-label"><span class="legend-blue"></span>상품A 긍정 리뷰 키워드율</span>
+        </div>
+        <!-- 차트 -->
+        <div class="chart-area" id="chartArea">
+            <table class="butterfly-table">
+                <thead>
+                    <tr>
+                        <th>대분류</th>
+                        <th>중분류</th>
+                        <th>부정<br>비교값</th>
+                        <th style="min-width:400px;">버터플라이 차트</th>
+                        <th>긍정<br>비교값</th>
+                    </tr>
+                </thead>
+                <tbody id="chartTbody">
+                    <!-- JS로 데이터 렌더링 -->
+                </tbody>
+            </table>
+            <div id="noReviewMsg" class="no-review" style="display:none;">현재 해당 상품에 대한 리뷰가 없습니다.</div>
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+    </div>
+    <script>
+        // 샘플 데이터
+        const chartData = [
+            { group: "품질", sub: "내구성", avgNeg: 2.1, prodNeg: 1.5, avgPos: 7.2, prodPos: 8.0 },
+            { group: "품질", sub: "재질", avgNeg: 1.8, prodNeg: 2.3, avgPos: 6.5, prodPos: 6.1 },
+            { group: "성능", sub: "효과", avgNeg: 3.0, prodNeg: 2.2, avgPos: 8.8, prodPos: 9.5 },
+            { group: "성능", sub: "흡수", avgNeg: 1.2, prodNeg: 0.8, avgPos: 5.4, prodPos: 6.0 },
+            { group: "디자인", sub: "색상", avgNeg: 0.9, prodNeg: 1.1, avgPos: 4.2, prodPos: 4.8 },
+            { group: "디자인", sub: "패턴", avgNeg: 0.7, prodNeg: 0.5, avgPos: 3.9, prodPos: 4.1 },
+            { group: "가격", sub: "할인", avgNeg: 2.5, prodNeg: 2.0, avgPos: 7.0, prodPos: 7.3 },
+            { group: "가격", sub: "가성비", avgNeg: 1.6, prodNeg: 1.2, avgPos: 6.2, prodPos: 6.8 },
+            { group: "배송", sub: "속도", avgNeg: 2.2, prodNeg: 2.5, avgPos: 7.5, prodPos: 7.1 },
+            { group: "배송", sub: "포장", avgNeg: 1.0, prodNeg: 0.7, avgPos: 5.0, prodPos: 5.5 }
+        ];
+        // 정책: 키워드율이 0% 혹은 null인 데이터는 미노출
+        const filtered = chartData.filter(d =>
+            (d.avgNeg || d.prodNeg || d.avgPos || d.prodPos) &&
+            (d.avgNeg > 0 || d.prodNeg > 0 || d.avgPos > 0 || d.prodPos > 0)
+        );
+        // Y축: 대분류 오름차순, 중분류는 대분류 내 긍정 리뷰 비교값 내림차순
+        filtered.sort((a, b) => {
+            if (a.group !== b.group) return a.group.localeCompare(b.group);
+            return (b.prodPos - b.avgPos) - (a.prodPos - a.avgPos);
+        });
+        // 최대값(정책: 부정은 전체 max의 1/3, 긍정은 전체 max)
+        const maxNeg = Math.max(...[...filtered.map(d => d.avgNeg || 0), ...filtered.map(d => d.prodNeg || 0), 1]);
+        const maxPos = Math.max(...filtered.map(d => d.avgPos || 0), ...filtered.map(d => d.prodPos || 0), 1);
+        const chartMax = Math.max(maxPos, maxNeg * 3);
+
+        // 렌더링
+        function renderTable() {
+            const tbody = document.getElementById('chartTbody');
+            const noReviewMsg = document.getElementById('noReviewMsg');
+            tbody.innerHTML = '';
+            if (filtered.length === 0) {
+                noReviewMsg.style.display = '';
+                return;
+            }
+            noReviewMsg.style.display = 'none';
+            let prevGroup = '';
+            filtered.forEach((d, i) => {
+                // 비교값
+                const negDiff = (d.prodNeg - d.avgNeg).toFixed(1);
+                const posDiff = (d.prodPos - d.avgPos).toFixed(1);
+                // 길이 계산
+                const negBarW = (d.prodNeg / (chartMax / 3)) * 50; // %
+                const posBarW = (d.prodPos / chartMax) * 50; // %
+                const negLineW = (d.avgNeg / (chartMax / 3)) * 50;
+                const posLineW = (d.avgPos / chartMax) * 50;
+                // 대분류 머지
+                let groupCell = '';
+                if (prevGroup !== d.group) {
+                    const rowSpan = filtered.filter(x => x.group === d.group).length;
+                    groupCell = `<td class="cat-cell" rowspan="${rowSpan}">${d.group}</td>`;
+                    prevGroup = d.group;
+                }
+                tbody.innerHTML += `
+                <tr>
+                    ${groupCell}
+                    <td class="subcat-cell">${d.sub}</td>
+                    <td class="diff-cell ${negDiff <= 0 ? 'diff-pos' : 'diff-neg'}">${negDiff > 0 ? '+' : ''}${negDiff}%</td>
+                    <td>
+                        <div class="bar-area">
+                            <!-- 부정: 왼쪽 -->
+                            <div class="bar-neg" style="width:${negBarW}%;"
+                                onmousemove="showTooltip(event, ${i}, 'neg')" onmouseleave="hideTooltip()"></div>
+                            <div class="line-neg" style="width:2px; height:32px; right:calc(50% + ${negLineW}%);"></div>
+                            <!-- 긍정: 오른쪽 -->
+                            <div class="bar-pos" style="width:${posBarW}%;"
+                                onmousemove="showTooltip(event, ${i}, 'pos')" onmouseleave="hideTooltip()"></div>
+                            <div class="line-pos" style="width:2px; height:32px; left:calc(50% + ${posLineW}%);"></div>
+                        </div>
+                    </td>
+                    <td class="diff-cell ${posDiff >= 0 ? 'diff-pos' : 'diff-neg'}">${posDiff > 0 ? '+' : ''}${posDiff}%</td>
+                </tr>
+            `;
+            });
+        }
+        renderTable();
+
+        // 툴팁
+        function showTooltip(e, idx, type) {
+            const d = filtered[idx];
+            const tooltip = document.getElementById('tooltip');
+            if(type === 'neg') {
+                tooltip.innerHTML = `
+                    <div style="font-weight:bold;">${d.sub} (부정)</div>
+                    <div>카테고리 평균: <b>${d.avgNeg.toFixed(1)}%</b></div>
+                    <div>상품: <b>${d.prodNeg.toFixed(1)}%</b></div>
+                    <div>차이값: <span style="color:${d.prodNeg - d.avgNeg <= 0 ? '#388e3c' : '#d32f2f'}">${(d.prodNeg - d.avgNeg).toFixed(1)}%</span></div>
+                `;
+            } else {
+                tooltip.innerHTML = `
+                    <div style="font-weight:bold;">${d.sub} (긍정)</div>
+                    <div>카테고리 평균: <b>${d.avgPos.toFixed(1)}%</b></div>
+                    <div>상품: <b>${d.prodPos.toFixed(1)}%</b></div>
+                    <div>차이값: <span style="color:${d.prodPos - d.avgPos >= 0 ? '#388e3c' : '#d32f2f'}">${(d.prodPos - d.avgPos).toFixed(1)}%</span></div>
+                `;
+            }
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.pageX + 16) + 'px';
+            tooltip.style.top = (e.pageY - tooltip.offsetHeight - 10 < window.scrollY ? e.pageY + 16 : e.pageY - tooltip.offsetHeight - 10) + 'px';
+        }
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>

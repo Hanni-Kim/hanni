@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>지표 자동 계산기 + CSV 연동</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 40px; }
+        .input-row { margin-bottom: 10px; }
+        label { display: inline-block; width: 200px; }
+        input[type="number"] { width: 120px; padding: 4px; }
+        table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background: #f1f1f1; }
+        .result { background: #e3f7e3; }
+        .desc { color: #888; font-size: 13px; }
+        .csv-summary { margin: 16px 0; background: #f9f9f9; padding: 12px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h2>지표 자동 계산기 + CSV 연동</h2>
+    <div>
+        <b>CSV 파일 업로드:</b>
+        <input type="file" id="csvFile" accept=".csv" onchange="handleCSV(this)">
+    </div>
+    <div id="csvSummary" class="csv-summary"></div>
+    <div id="inputs"></div>
+    <div style="margin-top:12px;">
+        <button onclick="calc()">계산하기</button>
+    </div>
+    <div id="result"></div>
+    <script>
+        // 입력값 정의
+        const inputDefs = [
+            { key: "고객인수수량", label: "고객인수수량", desc: "총판매, 반품률, 교환률, 리뷰 작성률 등에서 사용" },
+            { key: "반품회수수량", label: "반품회수수량", desc: "반품률 등에서 사용" },
+            { key: "교환회수수량", label: "교환회수수량", desc: "교환률 등에서 사용" },
+            { key: "리뷰개수", label: "리뷰개수", desc: "리뷰 작성률 등에서 사용" },
+            { key: "4점이상리뷰개수", label: "4점이상리뷰개수", desc: "4점이상 리뷰, 4점 이상 리뷰율 등에서 사용" },
+            { key: "전체리뷰개수", label: "전체리뷰개수", desc: "4점이상 리뷰, 4점 이상 리뷰율 등에서 사용" },
+            { key: "VOC키워드율", label: "VOC키워드율", desc: "최다 VOC 키워드 등에서 사용" },
+            { key: "카테고리평균반품률", label: "카테고리평균반품률", desc: "반품률 카테고리 평균 비교값 등에서 사용" },
+            { key: "카테고리평균교환률", label: "카테고리평균교환률", desc: "교환률 카테고리 평균 비교값 등에서 사용" },
+            { key: "카테고리평균VOC키워드율", label: "카테고리평균VOC키워드율", desc: "최다 VOC 키워드 카테고리 평균 비교값 등에서 사용" },
+            { key: "카테고리평균4점이상리뷰율", label: "카테고리평균4점이상리뷰율", desc: "4점 이상 리뷰율 카테고리 평균 비교값 등에서 사용" },
+            { key: "4점이상리뷰키워드율", label: "4점이상리뷰키워드율", desc: "4점 이상 최다 리뷰 키워드 등에서 사용" },
+            { key: "카테고리평균4점이상리뷰키워드율", label: "카테고리평균4점이상리뷰키워드율", desc: "4점 이상 리뷰 키워드의 카테고리 평균 비교값 등에서 사용" },
+            { key: "4점미만리뷰키워드율", label: "4점미만리뷰키워드율", desc: "4점 미만 최다 리뷰 키워드 등에서 사용" },
+            { key: "카테고리평균4점미만리뷰키워드율", label: "카테고리평균4점미만리뷰키워드율", desc: "4점 미만 리뷰 키워드 카테고리 평균 비교값 등에서 사용" },
+            { key: "A키워드건수", label: "A키워드건수", desc: "A 키워드율 등에서 사용" },
+            { key: "카테고리A키워드건수", label: "카테고리A키워드건수", desc: "A 키워드 카테고리 평균 비율 등에서 사용" },
+            { key: "4점미만A키워드건수", label: "4점미만A키워드건수", desc: "4점 미만 리뷰의 A 키워드율 등에서 사용" },
+            { key: "카테고리4점미만A키워드건수", label: "카테고리4점미만A키워드건수", desc: "4점 미만 리뷰의 A 키워드 카테고리 평균 비율 등에서 사용" },
+            { key: "4점이상A키워드건수", label: "4점이상A키워드건수", desc: "4점 이상 리뷰의 A 키워드율 등에서 사용" },
+            { key: "카테고리4점이상A키워드건수", label: "카테고리4점이상A키워드건수", desc: "4점 이상 리뷰의 A 키워드 카테고리 평균 비율 등에서 사용" }
+        ];
+
+        // 지표 정의 (계산식)
+        const indicators = [
+            { name: "총판매", desc: "고객인수 수량", calc: d => d['고객인수수량'] },
+            { name: "반품률", desc: "(반품회수수량 ÷ 고객인수수량)*100", calc: d => d['고객인수수량'] ? (d['반품회수수량']/d['고객인수수량']*100).toFixed(2) : "" },
+            { name: "교환률", desc: "(교환회수수량 ÷ 고객인수수량)*100", calc: d => d['고객인수수량'] ? (d['교환회수수량']/d['고객인수수량']*100).toFixed(2) : "" },
+            { name: "리뷰 작성률", desc: "(리뷰 개수÷ 고객인수수량)*100", calc: d => d['고객인수수량'] ? (d['리뷰개수']/d['고객인수수량']*100).toFixed(2) : "" },
+            { name: "4점이상 리뷰", desc: "(상품평가점수 4점이상리뷰개수 ÷ 전체리뷰개수)*100", calc: d => d['전체리뷰개수'] ? (d['4점이상리뷰개수']/d['전체리뷰개수']*100).toFixed(2) : "" },
+            { name: "최다 VOC 키워드", desc: "상품의 VOC 키워드율 가장 높은 키워드", calc: d => d['VOC키워드율'] },
+            { name: "4점 이상 리뷰율", desc: "(상품평가점수 4점이상리뷰개수 ÷ 전체리뷰개수)*100", calc: d => d['전체리뷰개수'] ? (d['4점이상리뷰개수']/d['전체리뷰개수']*100).toFixed(2) : "" },
+            { name: "4점 이상 최다 리뷰 키워드", desc: "상품의 4점 이상 리뷰의 키워드율 가장 높은 키워드", calc: d => d['4점이상리뷰키워드율'] },
+            { name: "4점 미만 최다 리뷰 키워드", desc: "상품의 4점 미만 리뷰의 키워드율 가장 높은 키워드", calc: d => d['4점미만리뷰키워드율'] },
+            { name: "반품률 카테고리 평균 비교값", desc: "(상품의 반품률) – (카테고리 평균 반품률)", calc: d => d['고객인수수량'] && d['카테고리평균반품률'] ? ((d['반품회수수량']/d['고객인수수량']*100) - d['카테고리평균반품률']).toFixed(2) : "" },
+            { name: "교환률 카테고리 평균 비교값", desc: "(상품의 교환률) – (카테고리 평균 교환률)", calc: d => d['고객인수수량'] && d['카테고리평균교환률'] ? ((d['교환회수수량']/d['고객인수수량']*100) - d['카테고리평균교환률']).toFixed(2) : "" },
+            { name: "최다 VOC 키워드 카테고리 평균 비교값", desc: "(상품 최다 VOC 키워드율) - (해당 VOC 키워드의 카테고리 평균 키워드율)", calc: d => d['VOC키워드율'] && d['카테고리평균VOC키워드율'] ? (d['VOC키워드율'] - d['카테고리평균VOC키워드율']).toFixed(2) : "" },
+            { name: "4점 이상 리뷰율 카테고리 평균 비교값", desc: "(상품 4점 이상 리뷰율) - (카테고리 평균 4점 이상 리뷰율)", calc: d => d['전체리뷰개수'] && d['카테고리평균4점이상리뷰율'] ? ((d['4점이상리뷰개수']/d['전체리뷰개수']*100) - d['카테고리평균4점이상리뷰율']).toFixed(2) : "" },
+            { name: "4점 이상 리뷰 키워드의 카테고리 평균 비교값", desc: "(상품의 4점 이상 최다 리뷰의 키워드율) - (해당 리뷰 키워드의 카테고리 평균 키워드율)", calc: d => d['4점이상리뷰키워드율'] && d['카테고리평균4점이상리뷰키워드율'] ? (d['4점이상리뷰키워드율'] - d['카테고리평균4점이상리뷰키워드율']).toFixed(2) : "" },
+            { name: "4점 미만 리뷰 키워드 카테고리 평균 비교값", desc: "(상품의 4점 미만 최다 리뷰의 키워드율) - (해당 리뷰 키워드의 카테고리 평균 키워드율)", calc: d => d['4점미만리뷰키워드율'] && d['카테고리평균4점미만리뷰키워드율'] ? (d['4점미만리뷰키워드율'] - d['카테고리평균4점미만리뷰키워드율']).toFixed(2) : "" },
+            { name: "A 키워드율", desc: "(해당 상품의 A 키워드 건수 ÷ 해당 상품 고객 인수 수량) × 100", calc: d => d['고객인수수량'] ? (d['A키워드건수']/d['고객인수수량']*100).toFixed(2) : "" },
+            { name: "A 키워드 카테고리 평균 비율", desc: "(카테고리 내 A 키워드 건수 ÷ 카테고리 전체 고객 인수 수량) × 100", calc: d => d['카테고리A키워드건수'] && d['고객인수수량'] ? (d['카테고리A키워드건수']/d['고객인수수량']*100).toFixed(2) : "" },
+            { name: "A 키워드 카테고리 평균 비교값", desc: "(상품의 A 키워드율) - (카테고리의 A 키워드율)", calc: d => d['고객인수수량'] && d['카테고리A키워드건수'] ? ((d['A키워드건수']/d['고객인수수량']*100) - (d['카테고리A키워드건수']/d['고객인수수량']*100)).toFixed(2) : "" },
+            { name: "4점 미만 리뷰의 A 키워드율", desc: "(해당 상품의 4점 미만 리뷰의 A 키워드 건수 ÷ 해당 상품 고객 인수 수량) × 100", calc: d => d['고객인수수량'] ? (d['4점미만A키워드건수']/d['고객인수수량']*100).toFixed(2) : "" },
+            { name: "4점 미만 리뷰의 A 키워드 카테고리 평균 비율", desc: "(해당 카테고리의 4점 미만 리뷰의 A 키워드 건수 ÷ 카테고리 전체 고객 인수 수량) × 100", calc: d => d['카테고리4점미만A키워드건수'] && d['고객인수수량'] ? (d['카테고리4점미만A키워드건수']/d['고객인수수량']*100).toFixed(2) : "" },
+            { name: "4점 미만 리뷰의 A 키워드 카테고리 평균 비교값", desc: "(상품의 4점 미만 A 키워드율) - (카테고리의 4점 미만 A 키워드율)", calc: d => d['고객인수수량'] && d['카테고리4점미만A키워드건수'] ? ((d['4점미만A키워드건수']/d['고객인수수량']*100) - (d['카테고리4점미만A키워드건수']/d['고객인수수량']*100)).toFixed(2) : "" },
+            { name: "4점 이상 리뷰의 A 키워드율", desc: "(해당 상품의 4점 이상 리뷰의 A 키워드 건수 ÷ 해당 상품 고객 인수 수량) × 100", calc: d => d['고객인수수량'] ? (d['4점이상A키워드건수']/d['고객인수수량']*100).toFixed(2) : "" },
+            { name: "4점 이상 리뷰의 A 키워드 카테고리 평균 비율", desc: "(해당 카테고리의 4점 이상 리뷰의 A 키워드 건수 ÷ 카테고리 전체 고객 인수 수량) × 100", calc: d => d['카테고리4점이상A키워드건수'] && d['고객인수수량'] ? (d['카테고리4점이상A키워드건수']/d['고객인수수량']*100).toFixed(2) : "" },
+            { name: "4점 이상 리뷰의 A 키워드 카테고리 평균 비교값", desc: "(상품의 4점 이상 A 키워드율) - (카테고리의 4점 이상 A 키워드율)", calc: d => d['고객인수수량'] && d['카테고리4점이상A키워드건수'] ? ((d['4점이상A키워드건수']/d['고객인수수량']*100) - (d['카테고리4점이상A키워드건수']/d['고객인수수량']*100)).toFixed(2) : "" }
+        ];
+
+        // 입력 폼 생성
+        function renderInputs() {
+            let html = '';
+            inputDefs.forEach(def => {
+                html += `<div class="input-row">
+                    <label for="input_${def.key}">${def.label}</label>
+                    <input type="number" id="input_${def.key}" placeholder="${def.desc}" step="any">
+                </div>`;
+            });
+            document.getElementById('inputs').innerHTML = html;
+        }
+        renderInputs();
+
+        // CSV 파싱 및 가공
+        function handleCSV(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+                // 헤더 파싱
+                let headerRow = rows[0].replace(/"/g, '').split(',');
+                // 데이터 파싱
+                let dataRows = rows.slice(1).map(r => r.replace(/"/g, '').split(','));
+                // 리뷰건수 합계
+                let reviewCountIdx = headerRow.findIndex(h => h.includes('리뷰건수'));
+                let reviewSum = 0;
+                dataRows.forEach(row => {
+                    let val = parseFloat(row[reviewCountIdx]);
+                    if (!isNaN(val)) reviewSum += val;
+                });
+                // 리뷰점수 생성 및 긍/부정 분류
+                let prodScoreIdx = headerRow.findIndex(h => h.includes('상품평가점수평균'));
+                let delivScoreIdx = headerRow.findIndex(h => h.includes('배송평가점수평균'));
+                let posCnt = 0, negCnt = 0;
+                let reviewScores = [];
+                dataRows.forEach(row => {
+                    let prod = parseFloat(row[prodScoreIdx]);
+                    let deliv = parseFloat(row[delivScoreIdx]);
+                    let score = (isNaN(prod) || isNaN(deliv)) ? undefined : (prod + deliv) / 2;
+                    reviewScores.push(score);
+                    if (score !== undefined) {
+                        if (score >= 4) posCnt++;
+                        else negCnt++;
+                    }
+                });
+                // input에 리뷰개수 자동 입력
+                document.getElementById('input_리뷰개수').value = reviewSum;
+                // 요약 표시
+                document.getElementById('csvSummary').innerHTML =
+                    `<b>CSV 요약:</b> 리뷰건수 합계: <b>${reviewSum}</b> &nbsp;|&nbsp; 긍정리뷰(4점 이상): <b>${posCnt}</b> &nbsp;|&nbsp; 부정리뷰(4점 미만): <b>${negCnt}</b>`;
+            };
+            reader.readAsText(file, 'utf-8');
+        }
+
+        // 계산
+        function calc() {
+            const d = {};
+            inputDefs.forEach(def => {
+                const val = document.getElementById('input_' + def.key).value;
+                d[def.key] = val === "" ? undefined : parseFloat(val);
+            });
+            let html = '<table><tr><th>지표명</th><th>계산식/정의</th><th>결과</th></tr>';
+            indicators.forEach(ind => {
+                let val = ind.calc(d);
+                html += `<tr><td>${ind.name}</td><td class="desc">${ind.desc}</td><td class="result">${val ?? ''}</td></tr>`;
+            });
+            html += '</table>';
+            document.getElementById('result').innerHTML = html;
+        }
+    </script>
+</body>
+</html>

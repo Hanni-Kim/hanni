@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>4수치 양방향(버터플라이) 차트</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { padding: 40px; font-family: sans-serif; }
+        canvas { max-width: 1000px; }
+    </style>
+</head>
+<body>
+    <h2>4수치 양방향(버터플라이) 항목별 점수 비교</h2>
+    <canvas id="scoreChart"></canvas>
+    <script>
+        const labels = [
+            '꾸준함', '만족도', '반응속도', '보습감', '사용감',
+            '시원함', '흡수율', '효과', '구성',
+            '단순포장', '무르지않음', '신선함',
+            '안심성분', '지용성', '향'
+        ];
+        const groupMap = [
+            '성능', '성능', '성능', '성능', '성능',
+            '성능', '성능', '성능', '단순변심',
+            '단순변심', '품질', '품질',
+            '품질', '품질', '품질'
+        ];
+
+        // 샘플 데이터 (다양하게)
+        const avgPos =      [3.2, 4.5, 2.8, 4.3, 3.5, 3.7, 4.1, 3.9, 2.9, 3.8, 3.6, 3.3, 4.2, 3.4, 3.2];
+        const avgNeg =      [1.2, 1.5, 0.8, 1.3, 1.5, 1.7, 1.1, 1.9, 0.9, 1.8, 1.6, 1.3, 1.2, 1.4, 1.2];
+        const colPos =      [4.0, 4.1, 3.0, 4.2, 3.8, 3.2, 4.5, 3.7, 3.1, 3.3, 3.8, 3.5, 4.0, 3.7, 3.5];
+        const colNeg =      [1.0, 1.1, 0.7, 1.2, 1.3, 1.0, 1.5, 1.4, 0.8, 1.2, 1.3, 1.1, 1.0, 1.2, 1.1];
+
+        // 왼쪽(음수), 오른쪽(양수)로 변환
+        const avgNegBar = avgNeg.map(v => -v);
+        const colNegBar = colNeg.map(v => -v);
+        const avgPosBar = avgPos;
+        const colPosBar = colPos;
+
+        const avgColor = 'rgba(255, 99, 132, 0.5)';
+        const avgNegColor = 'rgba(255, 99, 132, 0.9)';
+        const colColor = 'rgba(54, 162, 235, 0.5)';
+        const colNegColor = 'rgba(54, 162, 235, 0.9)';
+
+        // 대분류, Δ값 모두 표기 플러그인
+        const groupAndDeltaLabelPlugin = {
+            id: 'groupAndDeltaLabelPlugin',
+            afterDraw(chart) {
+                const { ctx, scales, data, chartArea } = chart;
+                const yAxis = scales.y;
+                // 대분류별 시작/끝 인덱스 계산
+                const groupRanges = [];
+                let prevGroup = groupMap[0];
+                let startIdx = 0;
+                for (let i = 1; i <= groupMap.length; i++) {
+                    if (groupMap[i] !== prevGroup || i === groupMap.length) {
+                        groupRanges.push({ group: prevGroup, start: startIdx, end: i - 1 });
+                        prevGroup = groupMap[i];
+                        startIdx = i;
+                    }
+                }
+                // 대분류 라벨 그리기 (가장 왼쪽)
+                ctx.save();
+                ctx.font = 'bold 15px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#222';
+                groupRanges.forEach(({ group, start, end }) => {
+                    const yStart = yAxis.getPixelForValue(labels[start]);
+                    const yEnd = yAxis.getPixelForValue(labels[end]);
+                    const yMid = (yStart + yEnd) / 2;
+                    ctx.fillText(group, chartArea.left - 90, yMid); // 대분류는 가장 왼쪽(-90)
+                });
+                ctx.restore();
+
+                // Δ값 그리기 (대분류와 소분류 사이)
+                ctx.save();
+                ctx.font = 'bold 13px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                data.labels.forEach((label, idx) => {
+                    const y = yAxis.getPixelForValue(label);
+                    // Δ값 계산: (콜라겐 긍정-평균 긍정), (콜라겐 부정-평균 부정)
+                    const diffPos = (colPosBar[idx] - avgPosBar[idx]).toFixed(2);
+                    const diffNeg = (colNegBar[idx] - avgNegBar[idx]).toFixed(2);
+                    ctx.fillStyle = diffPos >= 0 ? 'red' : 'green';
+                    ctx.fillText(`Δ+${diffPos}`, chartArea.left - 35, y - 10); // 긍정 Δ값은 위쪽
+                    ctx.fillStyle = diffNeg >= 0 ? 'red' : 'green';
+                    ctx.fillText(`Δ-${diffNeg}`, chartArea.left - 35, y + 10); // 부정 Δ값은 아래쪽
+                });
+                ctx.restore();
+            }
+        };
+
+        const ctx = document.getElementById('scoreChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: '카테고리 평균(부정)',
+                        data: avgNegBar,
+                        backgroundColor: avgNegColor,
+                        borderRadius: 8,
+                        barThickness: 18,
+                        order: 1
+                    },
+                    {
+                        type: 'bar',
+                        label: '콜라겐 프로페셔널(부정)',
+                        data: colNegBar,
+                        backgroundColor: colNegColor,
+                        borderRadius: 8,
+                        barThickness: 18,
+                        order: 2
+                    },
+                    {
+                        type: 'bar',
+                        label: '카테고리 평균(긍정)',
+                        data: avgPosBar,
+                        backgroundColor: avgColor,
+                        borderRadius: 8,
+                        barThickness: 18,
+                        order: 3
+                    },
+                    {
+                        type: 'bar',
+                        label: '콜라겐 프로페셔널(긍정)',
+                        data: colPosBar,
+                        backgroundColor: colColor,
+                        borderRadius: 8,
+                        barThickness: 18,
+                        order: 4
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: true }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        min: -5,
+                        max: 5,
+                        title: { display: true, text: '점수' },
+                        ticks: {
+                            callback: (value) => Math.abs(value)
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            padding: 70
+                        }
+                    }
+                }
+            },
+            plugins: [groupAndDeltaLabelPlugin]
+        });
+    </script>
+</body>
+</html>

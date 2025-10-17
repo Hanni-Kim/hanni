@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chart.js 테스트</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            padding: 40px;
+            font-family: sans-serif;
+        }
+
+        canvas {
+            max-width: 600px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>혼합 차트 (수평 막대 + 점)</h2>
+    <canvas id="myChart"></canvas>
+
+    <script>
+        const ctx = document.getElementById('myChart').getContext('2d');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['김', '맞지않음', '작음'],
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: '전체 비율',
+                        data: [0.21, 2.66, 2.21], // 막대 데이터
+                        backgroundColor: 'rgba(153, 102, 255, 0.4)',
+                        borderRadius: 8,
+                        barThickness: 24,
+                    },
+                    {
+                        type: 'line',
+                        label: '포인트 지표',
+                        data: [1.5, 1.0, 2.0], // 점/선 데이터 (다르게!)
+                        borderColor: 'transparent',
+                        backgroundColor: 'blue',
+                        pointBackgroundColor: 'blue',
+                        pointRadius: 6,
+                        fill: false,
+                        showLine: true
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.raw}%`
+                        }
+                    },
+                    // 커스텀 플러그인 추가
+                    verticalLinePlugin: {
+                        // 아무 옵션도 필요 없음
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => `${value}%`
+                        }
+                    }
+                }
+            },
+            plugins: [{
+                id: 'verticalLinePlugin',
+                afterDatasetsDraw(chart) {
+                    const { ctx, chartArea, scales } = chart;
+                    const yAxis = scales.y;
+                    const xAxis = scales.x;
+                    const dataset = chart.data.datasets[1]; // 두 번째(line) 데이터셋 사용!
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                    ctx.lineWidth = 2;
+                    dataset.data.forEach((value, idx) => {
+                        const y = yAxis.getPixelForValue(idx);
+                        const x = xAxis.getPixelForValue(value);
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(xAxis.getPixelForValue(0), y);
+                        ctx.stroke();
+                    });
+                    ctx.restore();
+                }
+            }]
+        });
+    </script>
+</body>
+
+</html>

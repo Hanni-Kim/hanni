@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>항목별 점수 비교 (대분류+소분류+Δ값)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { padding: 40px; font-family: sans-serif; }
+        canvas { max-width: 900px; }
+    </style>
+</head>
+<body>
+    <h2>항목별 점수 비교 (대분류+소분류+Δ값)</h2>
+    <canvas id="scoreChart"></canvas>
+    <script>
+        const labels = [
+            '꾸준함', '만족도', '반응속도', '보습감', '사용감',
+            '시원함', '흡수율', '효과', '구성',
+            '단순포장', '무르지않음', '신선함',
+            '안심성분', '지용성', '향'
+        ];
+        // 각 소분류별 대분류 지정
+        const groupMap = [
+            '성능', '성능', '성능', '성능', '성능',
+            '성능', '성능', '성능', '단순변심',
+            '단순변심', '품질', '품질',
+            '품질', '품질', '품질'
+        ];
+
+        // 샘플 데이터 (다양하게)
+        const avgData =      [3.2, 4.5, 2.8, 4.3, 3.5, 3.7, 4.1, 3.9, 2.9, 3.8, 3.6, 3.3, 4.2, 3.4, 3.2];
+        const collagenData = [4.0, 4.1, 3.0, 4.2, 3.8, 3.2, 4.5, 3.7, 3.1, 3.3, 3.8, 3.5, 4.0, 3.7, 3.5];
+
+        const avgColor = 'rgba(255, 99, 132, 0.5)';
+        const collagenColor = 'rgba(54, 162, 235, 0.7)';
+
+        // Δ값, 대분류, 소분류 모두 표기 플러그인
+        const groupAndDeltaLabelPlugin = {
+            id: 'groupAndDeltaLabelPlugin',
+            afterDraw(chart) {
+                const { ctx, scales, data, chartArea } = chart;
+                const yAxis = scales.y;
+                // 대분류별 시작/끝 인덱스 계산
+                const groupRanges = [];
+                let prevGroup = groupMap[0];
+                let startIdx = 0;
+                for (let i = 1; i <= groupMap.length; i++) {
+                    if (groupMap[i] !== prevGroup || i === groupMap.length) {
+                        groupRanges.push({ group: prevGroup, start: startIdx, end: i - 1 });
+                        prevGroup = groupMap[i];
+                        startIdx = i;
+                    }
+                }
+                // 대분류 라벨 그리기 (가장 왼쪽)
+                ctx.save();
+                ctx.font = 'bold 15px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#222';
+                groupRanges.forEach(({ group, start, end }) => {
+                    const yStart = yAxis.getPixelForValue(labels[start]);
+                    const yEnd = yAxis.getPixelForValue(labels[end]);
+                    const yMid = (yStart + yEnd) / 2;
+                    ctx.fillText(group, chartArea.left - 90, yMid); // 대분류는 가장 왼쪽(-90)
+                });
+                ctx.restore();
+
+                // Δ값 그리기 (대분류와 소분류 사이)
+                ctx.save();
+                ctx.font = 'bold 13px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                data.labels.forEach((label, idx) => {
+                    const y = yAxis.getPixelForValue(label);
+                    const barValue = data.datasets[0].data[idx];
+                    const pointValue = data.datasets[1].data[idx].x;
+                    const diff = (pointValue - barValue).toFixed(2);
+                    ctx.fillStyle = diff >= 0 ? 'red' : 'green'; // 양수 빨강, 음수 초록
+                    ctx.fillText(`Δ${diff}`, chartArea.left - 35, y); // Δ값은 -35
+                });
+                ctx.restore();
+            }
+        };
+
+        // 수직선 플러그인 (포인트까지)
+        const verticalLinePlugin = {
+            id: 'verticalLinePlugin',
+            afterDatasetsDraw(chart) {
+                const { ctx, scales } = chart;
+                const yAxis = scales.y;
+                const xAxis = scales.x;
+                chart.data.datasets[1].data.forEach((value, idx) => {
+                    const y = yAxis.getPixelForValue(labels[idx]);
+                    const x = xAxis.getPixelForValue(value.x);
+                    const x0 = xAxis.getPixelForValue(0);
+                    ctx.save();
+                    ctx.strokeStyle = collagenColor;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x0, y);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+        };
+
+        const ctx = document.getElementById('scoreChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: '카테고리 평균',
+                        data: avgData,
+                        backgroundColor: avgColor,
+                        borderRadius: 8,
+                        barThickness: 24,
+                    },
+                    {
+                        type: 'scatter',
+                        label: '콜라겐 프로페셔널',
+                        data: collagenData.map((v, i) => ({ x: v, y: labels[i] })),
+                        backgroundColor: collagenColor,
+                        pointRadius: 8,
+                        showLine: false,
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: true }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 5,
+                        title: { display: true, text: '점수' }
+                    },
+                    y: {
+                        ticks: {
+                            padding: 70 // 소분류명 오른쪽으로 충분히 밀기
+                        }
+                    }
+                }
+            },
+            plugins: [verticalLinePlugin, groupAndDeltaLabelPlugin]
+        });
+    </script>
+</body>
+</html>

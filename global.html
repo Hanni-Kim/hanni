@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>글로벌 주문현황 조회</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 24px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #ddd;
+        }
+
+        .filter-box {
+            background: #f3edf9;
+            padding: 24px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            align-items: flex-start;
+        }
+
+        .left-textarea {
+            width: 350px;
+        }
+
+        .left-textarea .radio-row {
+            display: flex;
+            flex-direction: row;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .left-textarea textarea {
+            width: 100%;
+            height: 200px;
+            resize: vertical;
+            padding: 8px;
+        }
+
+        .right-form {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            position: relative;
+        }
+
+        .right-form-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+
+        .right-form label {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .right-form input,
+        .right-form select {
+            padding: 8px;
+            min-width: 140px;
+        }
+
+        .search-button-fixed {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 10px 20px;
+            background-color: #5c2dab;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .search-button-fixed:hover {
+            background-color: #4a1f90;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: #eee;
+        }
+
+        .update-time {
+            text-align: right;
+            font-size: 12px;
+            color: gray;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="filter-box">
+            <div class="left-textarea">
+                <div class="radio-row">
+                    <label><input type="radio" name="codeType" checked> 글로벌 주문코드</label>
+                    <label><input type="radio" name="codeType"> 글로벌 장바구니코드</label>
+                </div>
+                <textarea placeholder="조회할 주문코드 또는 장바구니 코드를 입력하세요"></textarea>
+            </div>
+            <div class="right-form">
+                <button class="search-button-fixed">조회</button>
+
+                <div class="right-form-row">
+                    <label>조회 기간</label>
+                    <select>
+                        <option>주문일자</option>
+                        <option>출고일자</option>
+                        <option>선적일</option>
+                        <option>배송완료일</option>
+                    </select>
+                    <input type="date" value="2024-01-01">
+                    <input type="date" value="2024-01-25">
+
+                    <label>송장번호</label>
+                    <input type="text">
+                </div>
+
+                <div class="right-form-row">
+                    <label>브랜드코드</label>
+                    <input type="text" placeholder="공통팝업 영역 1">
+                    <input type="text" placeholder="공통팝업 영역 2">
+                </div>
+
+                <div class="right-form-row">
+                    <label>상품정보</label>
+                    <select>
+                        <option>큐텐 단품코드</option>
+                        <option>큐텐 상품코드</option>
+                        <option>단품코드</option>
+                        <option>상품코드</option>
+                        <option>오리지널 단품코드</option>
+                        <option>오리지널 코드단품코드</option>
+                    </select>
+                    <input type="text" placeholder="공통팝업 영역 1">
+                    <input type="text" placeholder="공통팝업 영역 2">
+
+                    <label>수출신고 번호</label>
+                    <input type="text">
+                </div>
+
+                <div class="right-form-row">
+                    <label>정산 대상</label>
+                    <select>
+                        <option>전체</option>
+                        <option>대사일치</option>
+                        <option>물류사 불일치</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="update-time"
+            style="display: flex; justify-content: flex-end; align-items: center; gap: 16px; font-size: 15px; font-weight: bold; color: #222;">
+            UPDATE : 2025-08-06 10:00
+            <button onclick="downloadExcel()"
+                style="padding: 6px 12px; background-color: #e8e1f7; color: #5c2dab; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">엑셀
+                다운로드</button>
+        </div>
+        <script>
+            function downloadExcel() {
+                const table = document.querySelector('table');
+                const html = table.outerHTML;
+                const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '주문현황.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        </script>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>NO</th>
+                        <th>브랜드명</th>
+                        <th>상품명</th>
+                        <th>오리지널상품코드</th>
+                        <th>오리지널단품코드</th>
+                        <th>구매MD코드</th>
+                        <th>판매MD코드</th>
+                        <th>판매MD코스트센터</th>
+                        <th>글로벌상품코드</th>
+                        <th>글로벌단품코드</th>
+                        <th>큐텐상품코드</th>
+                        <th>큐텐단품코드</th>
+                        <th>한국참고가(KRW)</th>
+                        <th>큐텐판매가(JPY)</th>
+                        <th>주문일자</th>
+                        <th>큐텐주문코드</th>
+                        <th>큐텐장바구니코드</th>
+                        <th>주문수량</th>
+                        <th>최종결제가(JPY)</th>
+                        <th>발송예정일</th>
+                        <th>출고일</th>
+                        <th>송장번호</th>
+                        <th>선적일</th>
+                        <th>수출신고번호</th>
+                        <th>EGFLEX결제금액(JPY)</th>
+                        <th>선적환율</th>
+                        <th>수출면장결제금액(KRW)</th>
+                        <th>결제차이</th>
+                        <th>배송완료일</th>
+                        <th>업데이트일시</th>
+                        <th>맵핑상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>레고트</td>
+                        <td>탈모샴푸 500ml</td>
+                        <td>80100</td>
+                        <td>801001</td>
+                        <td>500</td>
+                        <td>110</td>
+                        <td>200</td>
+                        <td>90010</td>
+                        <td>12400000</td>
+                        <td>11000000</td>
+                        <td>12400000</td>
+                        <td>40000</td>
+                        <td>3000</td>
+                        <td>20250801</td>
+                        <td>QT1110000</td>
+                        <td>BG1110000</td>
+                        <td>1</td>
+                        <td>3000</td>
+                        <td>20250802</td>
+                        <td>20250803</td>
+                        <td>365100000</td>
+                        <td>20250804</td>
+                        <td>EXP123400</td>
+                        <td>3000</td>
+                        <td>1,150</td>
+                        <td>35000</td>
+                        <td>true</td>
+                        <td>20250805</td>
+                        <td>20250806 09:30</td>
+                        <td>유니패스 맵핑 실패</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>이니스프리</td>
+                        <td>그린티 세럼</td>
+                        <td>80101</td>
+                        <td>801011</td>
+                        <td>501</td>
+                        <td>111</td>
+                        <td>201</td>
+                        <td>90011</td>
+                        <td>12400001</td>
+                        <td>11000001</td>
+                        <td>12400001</td>
+                        <td>40100</td>
+                        <td>3050</td>
+                        <td>20250801</td>
+                        <td>QT1110001</td>
+                        <td>BG1110001</td>
+                        <td>2</td>
+                        <td>3050</td>
+                        <td>20250802</td>
+                        <td>20250803</td>
+                        <td>365100001</td>
+                        <td>20250804</td>
+                        <td>EXP123401</td>
+                        <td>3050</td>
+                        <td>1,150</td>
+                        <td>35120</td>
+                        <td>false</td>
+                        <td>20250805</td>
+                        <td>20250806 09:31</td>
+                        <td>온트러스트 맵핑 실패</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>미샤</td>
+                        <td>타임레볼루션 크림</td>
+                        <td>80102</td>
+                        <td>801021</td>
+                        <td>502</td>
+                        <td>112</td>
+                        <td>202</td>
+                        <td>90012</td>
+                        <td>12400002</td>
+                        <td>11000002</td>
+                        <td>12400002</td>
+                        <td>40200</td>
+                        <td>3100</td>
+                        <td>20250801</td>
+                        <td>QT1110002</td>
+                        <td>BG1110002</td>
+                        <td>3</td>
+                        <td>3100</td>
+                        <td>20250802</td>
+                        <td>20250803</td>
+                        <td>365100002</td>
+                        <td>20250804</td>
+                        <td>EXP123402</td>
+                        <td>3100</td>
+                        <td>1,150</td>
+                        <td>35240</td>
+                        <td>true</td>
+                        <td>20250805</td>
+                        <td>20250806 09:32</td>
+                        <td>큐텐 맵핑 실패</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>레고트</td>
+                        <td>탈모샴푸 500ml</td>
+                        <td>80103</td>
+                        <td>801031</td>
+                        <td>503</td>
+                        <td>113</td>
+                        <td>203</td>
+                        <td>90013</td>
+                        <td>12400003</td>
+                        <td>11000003</td>
+                        <td>12400003</td>
+                        <td>40300</td>
+                        <td>3150</td>
+                        <td>20250801</td>
+                        <td>QT1110003</td>
+                        <td>BG1110003</td>
+                        <td>4</td>
+                        <td>3150</td>
+                        <td>20250802</td>
+                        <td>20250803</td>
+                        <td>365100003</td>
+                        <td>20250804</td>
+                        <td>EXP123403</td>
+                        <td>3150</td>
+                        <td>1,150</td>
+                        <td>35360</td>
+                        <td>false</td>
+                        <td>20250805</td>
+                        <td>20250806 09:33</td>
+                        <td>유니패스 맵핑 실패</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>이니스프리</td>
+                        <td>그린티 세럼</td>
+                        <td>80104</td>
+                        <td>801041</td>
+                        <td>504</td>
+                        <td>114</td>
+                        <td>204</td>
+                        <td>90014</td>
+                        <td>12400004</td>
+                        <td>11000004</td>
+                        <td>12400004</td>
+                        <td>40400</td>
+                        <td>3200</td>
+                        <td>20250801</td>
+                        <td>QT1110004</td>
+                        <td>BG1110004</td>
+                        <td>5</td>
+                        <td>3200</td>
+                        <td>20250802</td>
+                        <td>20250803</td>
+                        <td>365100004</td>
+                        <td>20250804</td>
+                        <td>EXP123404</td>
+                        <td>3200</td>
+                        <td>1,150</td>
+                        <td>35480</td>
+                        <td>true</td>
+                        <td>20250805</td>
+                        <td>20250806 09:34</td>
+                        <td>온트러스트 맵핑 실패</td>
+                    </tr>
+                    <!-- ... 25 more rows like above ... -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.env
+.env
+.venv
+venv/
+ENV/
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# Django
+*.log
+*.pot
+*.pyc
+*.mo
+*.db
+*.sqlite3
+media/
+staticfiles/
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# 기타
+*.bak
+*.swp
+*.swo
+.idea/
+*.iml
+
+# 환경 변수 및 시크릿
+.env.*
+.envrc
+secrets.json
+
+# 테스트/커버리지
+htmlcov/
+.coverage
+.tox/
+.nox/
+.cache/
+pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# 기타 임시
+*.tmp
+*.temp
+~$*

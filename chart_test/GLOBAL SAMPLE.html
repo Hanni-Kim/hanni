@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>주문현황 대시보드</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 40px;
+            background: #f8f9fa;
+        }
+
+        .dashboard-wrap {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .search-area {
+            background: #fff;
+            padding: 24px 32px 16px 32px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px #0001;
+            margin-bottom: 32px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .search-row label {
+            min-width: 110px;
+            font-weight: 500;
+        }
+
+        .search-row input[type="text"],
+        .search-row input[type="date"] {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            min-width: 180px;
+        }
+
+        .search-row .date-range {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-btns {
+            text-align: right;
+        }
+
+        .search-btns button {
+            padding: 8px 24px;
+            border: none;
+            border-radius: 4px;
+            background: #1976d2;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .search-btns button:hover {
+            background: #1251a3;
+        }
+
+        .order-table-wrap {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px #0001;
+            padding: 24px 0 0 0;
+        }
+
+        .order-table-header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 0 24px 12px 0;
+        }
+
+        .excel-btn {
+            padding: 7px 18px;
+            border: none;
+            border-radius: 4px;
+            background: #43a047;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .excel-btn:hover {
+            background: #2e7031;
+        }
+
+        .order-table-scroll {
+            overflow-x: auto;
+            max-height: 480px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1400px;
+            max-width: 1550px;
+        }
+
+        th,
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #eee;
+            text-align: center;
+        }
+
+        th {
+            background: #f1f3f6;
+            font-weight: 600;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #888;
+            padding: 40px 0;
+            font-size: 17px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-wrap">
+        <!-- 상단 조회조건 -->
+        <form class="search-area" onsubmit="return false;">
+            <div class="search-row">
+                <label>주문일자 <span style="color:#d32f2f">*</span></label>
+                <div class="date-range">
+                    <input type="date" id="dateFrom" value="2025-07-10" required>
+                    <span>~</span>
+                    <input type="date" id="dateTo" value="2025-07-15" required>
+                </div>
+                <label>해외 주문번호</label>
+                <input type="text" id="overseasOrderNo" placeholder="해외 주문번호">
+                <label>해외 상품코드</label>
+                <input type="text" id="overseasItemCd" placeholder="해외 상품코드">
+            </div>
+            <div class="search-row">
+                <label>국내 상품코드</label>
+                <input type="text" id="domesticItemCd" placeholder="국내 상품코드">
+                <label>국내 주문번호</label>
+                <input type="text" id="domesticOrderNo" placeholder="국내 주문번호">
+                <div class="search-btns" style="flex:1;">
+                    <button type="submit">검색</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- 하단 주문현황 그리드 -->
+        <div class="order-table-wrap">
+            <div class="order-table-header">
+                <button class="excel-btn" onclick="alert('엑셀 다운로드 기능은 구현 필요!')">엑셀 다운로드</button>
+            </div>
+            <div class="order-table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>국내 상품코드</th>
+                            <th>국내 단품코드</th>
+                            <th>해외 상품코드</th>
+                            <th>해외 단품코드</th>
+                            <th>주문일</th>
+                            <th>해외 주문번호</th>
+                            <th>선적일</th>
+                            <th>배송상태</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderTableBody">
+                        <!-- 샘플 데이터 -->
+                        <!--
+                    <tr>
+                        <td>DKR-12345</td>
+                        <td>DKR-12345-01</td>
+                        <td>OS-9988</td>
+                        <td>OS-9988-02</td>
+                        <td>2025-07-12</td>
+                        <td>OV-20250712-001</td>
+                        <td>2025-07-13</td>
+                        <td>배송중</td>
+                    </tr>
+                    -->
+                    </tbody>
+                </table>
+                <div id="noDataMsg" class="no-data" style="display:none;">조회 결과가 없습니다.</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // 샘플 데이터 (없으면 "조회 결과가 없습니다" 표시)
+        const sampleData = [
+            {
+                domesticItemCd: "DKR-12345",
+                domesticSkuCd: "DKR-12345-01",
+                overseasItemCd: "OS-9988",
+                overseasSkuCd: "OS-9988-02",
+                orderDate: "2025-07-12",
+                overseasOrderNo: "OV-20250712-001",
+                shipmentDate: "2025-07-13",
+                deliveryStatus: "배송중"
+            },
+            {
+                domesticItemCd: "DKR-54321",
+                domesticSkuCd: "DKR-54321-01",
+                overseasItemCd: "OS-1122",
+                overseasSkuCd: "OS-1122-01",
+                orderDate: "2025-07-11",
+                overseasOrderNo: "OV-20250711-003",
+                shipmentDate: "2025-07-14",
+                deliveryStatus: "배송완료"
+            }
+        ];
+
+        function renderTable(data) {
+            const tbody = document.getElementById('orderTableBody');
+            const noDataMsg = document.getElementById('noDataMsg');
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                noDataMsg.style.display = '';
+                return;
+            }
+            noDataMsg.style.display = 'none';
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td>${row.domesticItemCd}</td>
+                <td>${row.domesticSkuCd}</td>
+                <td>${row.overseasItemCd}</td>
+                <td>${row.overseasSkuCd}</td>
+                <td>${row.orderDate}</td>
+                <td>${row.overseasOrderNo}</td>
+                <td>${row.shipmentDate}</td>
+                <td>${row.deliveryStatus}</td>
+            `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 초기 렌더링
+        renderTable(sampleData);
+
+        // 검색 버튼 이벤트(샘플)
+        document.querySelector('.search-area').addEventListener('submit', function (e) {
+            // 실제로는 입력값으로 서버 조회 필요
+            // 샘플: 주문일자 필수 체크
+            const from = document.getElementById('dateFrom').value;
+            const to = document.getElementById('dateTo').value;
+            if (!from || !to) {
+                alert('주문일자를 선택해 주세요.');
+                return;
+            }
+            // 샘플: 전체 데이터 노출
+            renderTable(sampleData);
+        });
+    </script>
+</body>
+
+</html>

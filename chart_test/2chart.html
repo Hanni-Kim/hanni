@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Chart.js - 양방향 긍/부정 키워드</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 30px;
+            background: #fff;
+        }
+
+        .chart-container {
+            width: 1000px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>양방향 긍/부정 키워드 비교 (콜라겐 vs 카테고리 평균)</h2>
+    <div class="chart-container">
+        <canvas id="doubleSidedChart"></canvas>
+    </div>
+
+    <script>
+        const labels = ['끈적임', '밀착력', '발림성', '보습력'];
+
+        const data = {
+            labels: labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: '카테고리 평균 - 긍정',
+                    data: [0.02, 0.01, 0.05, 0.02],
+                    backgroundColor: '#C5D8FF',
+                    barThickness: 10
+                },
+                {
+                    type: 'bar',
+                    label: '카테고리 평균 - 부정',
+                    data: [-0.01, -0.01, -0.2, -0.1],
+                    backgroundColor: '#FFD0D0',
+                    barThickness: 10
+                },
+                {
+                    type: 'scatter',
+                    label: '콜라겐 - 긍정',
+                    data: [
+                        { x: 0.03, y: 0 },
+                        { x: 0.02, y: 1 },
+                        { x: 0.1, y: 2 },
+                        { x: 0.2, y: 3 }
+                    ],
+                    backgroundColor: '#0044CC',
+                    pointRadius: 6
+                },
+                {
+                    type: 'scatter',
+                    label: '콜라겐 - 부정',
+                    data: [
+                        { x: -0.01, y: 0 },
+                        { x: -0.00, y: 1 },
+                        { x: -0.09, y: 2 },
+                        { x: -0.01, y: 3 }
+                    ],
+                    backgroundColor: '#CC0000',
+                    pointRadius: 6
+                }
+            ]
+        };
+
+        const config = {
+            type: 'bar',
+            data: data,
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                scales: {
+                    x: {
+                        min: -0.25,
+                        max: 0.25,
+                        ticks: {
+                            callback: val => (Math.abs(val) * 100).toFixed(0) + '%'
+                        },
+                        grid: {
+                            color: '#ccc',
+                            zeroLineColor: '#000',
+                            zeroLineWidth: 2
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            callback: (val) => labels[val]
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                const val = ctx.raw.x !== undefined ? ctx.raw.x : ctx.raw;
+                                const direction = val < 0 ? '부정' : '긍정';
+                                return `${ctx.dataset.label} (${direction}): ${(Math.abs(val) * 100).toFixed(2)}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        new Chart(document.getElementById('doubleSidedChart'), config);
+    </script>
+</body>
+
+</html>
